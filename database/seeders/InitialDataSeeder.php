@@ -14,8 +14,8 @@ class InitialDataSeeder extends Seeder
         // Buat admin default
         User::create([
             'name' => 'Admin Laporin',
-            'email' => 'admin@laporin.test',
-            'password' => Hash::make('password'),
+            'email' => 'admin@laporin.com',
+            'password' => Hash::make('admin123'),
             'role' => 'admin',
         ]);
 

@@ -9,11 +9,24 @@ return new class extends Migration {
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+
+            // 👤 Data dasar user
             $table->string('name');
             $table->string('email')->unique();
-            $table->string('password');
+
+            // 🔑 Password (bisa null untuk login lewat Google)
+            $table->string('password')->nullable();
+
+            // 🧭 Role sistem
             $table->enum('role', ['user', 'admin'])->default('user');
+
+            // 🖼️ Foto profil
             $table->string('photo')->nullable();
+
+            // 🌐 Google OAuth
+            $table->string('google_id')->nullable()->unique();
+            $table->string('google_token')->nullable();
+
             $table->timestamps();
         });
     }

@@ -3,7 +3,16 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+
+// Middleware yang dibutuhkan
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+use Illuminate\Http\Middleware\HandleCors;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Session\Middleware\AuthenticateSession;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -13,22 +22,50 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // 🧩 Middleware global (web + api)
+        /*
+        |--------------------------------------------------------------------------
+        | 🌍 Global Middleware
+        |--------------------------------------------------------------------------
+        */
+        $middleware->use([
+            HandleCors::class,
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | 🧩 Web Middleware
+        |--------------------------------------------------------------------------
+        */
         $middleware->web(prepend: [
-            // Jika butuh middleware tambahan di web nanti bisa ditaruh di sini
+            EncryptCookies::class,
+            AddQueuedCookiesToResponse::class,
+            StartSession::class,
+            AuthenticateSession::class,
+            ShareErrorsFromSession::class,
+            VerifyCsrfToken::class,
         ]);
 
-        // 🧩 Middleware untuk API
+        /*
+        |--------------------------------------------------------------------------
+        | 🔐 API Middleware (untuk Sanctum SPA / Frontend React)
+        |--------------------------------------------------------------------------
+        | - Memastikan request dari frontend (localhost:3000) dianggap "stateful"
+        | - Membolehkan pengiriman cookie & CSRF
+        */
         $middleware->api(prepend: [
-            EnsureFrontendRequestsAreStateful::class, // penting untuk Sanctum
+            EnsureFrontendRequestsAreStateful::class,
         ]);
 
-        // 🧩 Alias middleware (agar bisa pakai 'admin' di route)
+        /*
+        |--------------------------------------------------------------------------
+        | 🧱 Alias Middleware
+        |--------------------------------------------------------------------------
+        */
         $middleware->alias([
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Kamu bisa menambahkan custom handler error di sini nanti
+        // Kamu bisa tambahkan handler custom di sini
     })
     ->create();
