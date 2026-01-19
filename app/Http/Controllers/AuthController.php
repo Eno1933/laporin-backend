@@ -24,6 +24,7 @@ class AuthController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'is_active' => true, // Default aktif saat registrasi
         ]);
 
         // Buat token login
@@ -54,6 +55,13 @@ class AuthController extends Controller
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Email atau password salah.'],
+            ]);
+        }
+
+        // Cek apakah akun aktif
+        if (!$user->is_active) {
+            throw ValidationException::withMessages([
+                'email' => ['Akun Anda dinonaktifkan. Silakan hubungi administrator.'],
             ]);
         }
 

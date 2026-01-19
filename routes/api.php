@@ -7,6 +7,7 @@ use App\Http\Controllers\ResponseController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\UserController; // Tambahkan ini
 
 /*
 |--------------------------------------------------------------------------
@@ -24,6 +25,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle']);
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
+
 // 🔐 Hanya untuk user yang sudah login
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -47,10 +49,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 📂 Kategori (Admin Only)
     Route::middleware('admin')->group(function () {
+        // 📁 Categories
         Route::get('/categories', [CategoryController::class, 'index']);
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/{category}', [CategoryController::class, 'update']);
         Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
+
+        // 👥 Users (Admin Only)
+        Route::get('/users', [UserController::class, 'index']);
+        Route::post('/users', [UserController::class, 'store']);
+        Route::put('/users/{user}', [UserController::class, 'update']);
+        Route::delete('/users/{user}', [UserController::class, 'destroy']);
+        Route::put('/users/{user}/toggle-status', [UserController::class, 'toggleStatus']); // Tambahkan ini
+        Route::get('/users/{user}', [UserController::class, 'show']);
 
         // 🛠️ Laporan (Admin)
         Route::get('/reports', [ReportController::class, 'index']);

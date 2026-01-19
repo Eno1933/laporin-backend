@@ -26,30 +26,49 @@ class GoogleAuthController extends Controller
             // Ambil data user dari Google
             $googleUser = Socialite::driver('google')->stateless()->user();
 
-            // Cari user berdasarkan email, atau buat baru
-            $user = User::updateOrCreate(
-                ['email' => $googleUser->getEmail()],
-                [
+            // Cari user berdasarkan email
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if ($user) {
+                // Cek apakah akun aktif
+                if (!$user->is_active) {
+                    $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+                    return redirect()->away("$frontendUrl/login?error=Akun dinonaktifkan");
+                }
+                
+                // Update data Google jika belum ada
+                if (!$user->google_id) {
+                    $user->update([
+                        'google_id' => $googleUser->getId(),
+                        'photo' => $googleUser->getAvatar(),
+                    ]);
+                }
+            } else {
+                // Buat user baru
+                $user = User::create([
                     'name' => $googleUser->getName(),
+                    'email' => $googleUser->getEmail(),
+                    'password' => Hash::make(uniqid()),
+                    'google_id' => $googleUser->getId(),
                     'photo' => $googleUser->getAvatar(),
-                    'password' => Hash::make(uniqid()), // password random
-                ]
-            );
+                    'is_active' => true, // Default aktif
+                ]);
+            }
 
             // Buat token Sanctum
             $token = $user->createToken('google-login')->plainTextToken;
 
-            // Dapatkan URL frontend dari .env (default: http://localhost:5173)
+            // Dapatkan URL frontend
             $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
 
-            // 🔁 Redirect ke React dengan query token dan role
-            return redirect()->away("$frontendUrl/auth/callback?token={$token}&role={$user->role}&name={$user->name}");
+            // 🔁 Redirect ke React dengan query token dan data user
+            return redirect()->away("$frontendUrl/auth/callback?token={$token}&role={$user->role}&name={$user->name}&user_id={$user->id}");
+
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Login Google gagal!',
-                'error' => $e->getMessage(),
-            ], 500);
+            \Log::error('Google Auth Error: ' . $e->getMessage());
+            
+            $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+            return redirect()->away("$frontendUrl/login?error=Login Google gagal");
         }
     }
 }

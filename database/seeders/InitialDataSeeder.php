@@ -17,6 +17,16 @@ class InitialDataSeeder extends Seeder
             'email' => 'admin@laporin.com',
             'password' => Hash::make('admin123'),
             'role' => 'admin',
+            'is_active' => true, // Tambahkan status aktif
+        ]);
+
+        // Buat beberapa user contoh (opsional)
+        User::create([
+            'name' => 'User Contoh',
+            'email' => 'user@contoh.com',
+            'password' => Hash::make('user123'),
+            'role' => 'user',
+            'is_active' => true,
         ]);
 
         // Tambahkan kategori umum

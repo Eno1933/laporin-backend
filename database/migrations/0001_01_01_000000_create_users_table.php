@@ -20,6 +20,9 @@ return new class extends Migration {
             // 🧭 Role sistem
             $table->enum('role', ['user', 'admin'])->default('user');
 
+            // 🔐 Status akun
+            $table->boolean('is_active')->default(true);
+
             // 🖼️ Foto profil
             $table->string('photo')->nullable();
 

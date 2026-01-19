@@ -19,9 +19,10 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'is_active',
         'photo',
-        'google_id',      // ⬅️ untuk login via Google
-        'google_token',   // ⬅️ untuk menyimpan token Google (opsional)
+        'google_id',
+        'google_token',
     ];
 
     /**
@@ -38,7 +39,24 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
+
+    /**
+     * Scope untuk user aktif
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope untuk user nonaktif
+     */
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
 
     /**
      * 🔗 Relasi: User bisa punya banyak laporan
@@ -70,5 +88,13 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    /**
+     * 🔐 Cek apakah user aktif
+     */
+    public function isActive(): bool
+    {
+        return $this->is_active === true;
     }
 }
