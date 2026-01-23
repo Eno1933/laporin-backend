@@ -5,12 +5,11 @@ namespace App\Http\Controllers;
 use Laravel\Socialite\Facades\Socialite;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Http\Request;
 
 class GoogleAuthController extends Controller
 {
     /**
-     * Redirect user ke halaman login Google
+     * Redirect ke Google
      */
     public function redirectToGoogle()
     {
@@ -18,57 +17,62 @@ class GoogleAuthController extends Controller
     }
 
     /**
-     * Handle callback setelah login Google
+     * Callback dari Google
      */
     public function handleGoogleCallback()
     {
         try {
-            // Ambil data user dari Google
             $googleUser = Socialite::driver('google')->stateless()->user();
 
-            // Cari user berdasarkan email
+            // Cari user
             $user = User::where('email', $googleUser->getEmail())->first();
 
             if ($user) {
-                // Cek apakah akun aktif
                 if (!$user->is_active) {
-                    $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
-                    return redirect()->away("$frontendUrl/login?error=Akun dinonaktifkan");
+                    return redirect()->away(
+                        config('app.frontend_url') . "/login?error=Akun dinonaktifkan"
+                    );
                 }
-                
-                // Update data Google jika belum ada
+
                 if (!$user->google_id) {
                     $user->update([
                         'google_id' => $googleUser->getId(),
-                        'photo' => $googleUser->getAvatar(),
+                        'photo'     => $googleUser->getAvatar(),
                     ]);
                 }
             } else {
-                // Buat user baru
                 $user = User::create([
-                    'name' => $googleUser->getName(),
-                    'email' => $googleUser->getEmail(),
-                    'password' => Hash::make(uniqid()),
+                    'name'      => $googleUser->getName(),
+                    'email'     => $googleUser->getEmail(),
+                    'password'  => Hash::make(uniqid()),
                     'google_id' => $googleUser->getId(),
-                    'photo' => $googleUser->getAvatar(),
-                    'is_active' => true, // Default aktif
+                    'photo'     => $googleUser->getAvatar(),
+                    'is_active' => true,
+                    'role'      => 'user', // default
                 ]);
             }
 
-            // Buat token Sanctum
+            // 🔐 Token Sanctum
             $token = $user->createToken('google-login')->plainTextToken;
 
-            // Dapatkan URL frontend
-            $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
+            // 🌐 Redirect ke frontend (WAJIB ENCODE)
+            $query = http_build_query([
+                'token'   => $token,
+                'role'    => $user->role,
+                'name'    => $user->name,
+                'user_id' => $user->id,
+            ]);
 
-            // 🔁 Redirect ke React dengan query token dan data user
-            return redirect()->away("$frontendUrl/auth/callback?token={$token}&role={$user->role}&name={$user->name}&user_id={$user->id}");
+            return redirect()->away(
+                config('app.frontend_url') . "/auth/callback?" . $query
+            );
 
         } catch (\Exception $e) {
-            \Log::error('Google Auth Error: ' . $e->getMessage());
-            
-            $frontendUrl = config('app.frontend_url', 'http://localhost:3000');
-            return redirect()->away("$frontendUrl/login?error=Login Google gagal");
+            \Log::error("Google Auth Error: " . $e->getMessage());
+
+            return redirect()->away(
+                config('app.frontend_url') . "/login?error=Login Google gagal"
+            );
         }
     }
 }
