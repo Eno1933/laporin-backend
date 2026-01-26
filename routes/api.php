@@ -38,6 +38,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my-reports', [ReportController::class, 'myReports']);
     Route::post('/reports', [ReportController::class, 'store']);
     Route::get('/reports/{report}', [ReportController::class, 'show']);
+    Route::put('/reports/{report}', [ReportController::class, 'update']);      // ✅ EDIT LAPORAN
+    Route::patch('/reports/{report}', [ReportController::class, 'update']);    // ✅ EDIT LAPORAN
     Route::delete('/reports/{report}', [ReportController::class, 'destroy']);
 
     // ==========================
@@ -54,7 +56,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ==========================
     // 📂 KATEGORI (READ ONLY - USER)
-    // 🔥 INI YANG DIPERBAIKI (OPS I A)
     // ==========================
     Route::get('/categories', [CategoryController::class, 'index']);
 

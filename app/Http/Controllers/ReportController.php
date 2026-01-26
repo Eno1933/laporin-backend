@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ReportController extends Controller
 {
@@ -52,6 +53,8 @@ class ReportController extends Controller
             'description' => 'required|string',
             'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'location' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         $imagePath = null;
@@ -66,14 +69,103 @@ class ReportController extends Controller
             'description' => $validated['description'],
             'image' => $imagePath,
             'location' => $validated['location'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
             'status' => 'baru',
         ]);
 
         return response()->json([
             'status' => true,
             'message' => 'Laporan berhasil dibuat',
-            'data' => $report,
+            'data' => $report->load('category'),
         ], 201);
+    }
+
+    /**
+     * 🔵 Edit laporan (hanya bisa jika status masih 'baru')
+     */
+    public function update(Request $request, Report $report)
+    {
+        // Cek kepemilikan (user hanya bisa edit laporannya sendiri)
+        if ($request->user()->role !== 'admin' && $report->user_id !== $request->user()->id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Akses ditolak. Anda tidak memiliki izin untuk mengedit laporan ini.'
+            ], 403);
+        }
+
+        // Cek status laporan
+        if ($report->status !== 'baru') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Laporan tidak dapat diedit karena status sudah ' . $report->status . '.'
+            ], 422);
+        }
+
+        // Validasi data
+        $validator = Validator::make($request->all(), [
+            'category_id' => 'required|exists:categories,id',
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'location' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $validated = $validator->validated();
+
+        // Handle image update
+        $imageData = [];
+        if ($request->hasFile('image')) {
+            // Hapus gambar lama jika ada
+            if ($report->image) {
+                Storage::disk('public')->delete($report->image);
+            }
+            $imageData['image'] = $request->file('image')->store('reports', 'public');
+        }
+
+        // Persiapkan data untuk update
+        $updateData = [
+            'category_id' => $validated['category_id'],
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'location' => $validated['location'] ?? $report->location,
+        ];
+
+        // Handle nullable fields
+        $updateData['latitude'] = isset($validated['latitude']) && $validated['latitude'] !== '' 
+            ? $validated['latitude'] 
+            : null;
+        
+        $updateData['longitude'] = isset($validated['longitude']) && $validated['longitude'] !== '' 
+            ? $validated['longitude'] 
+            : null;
+
+        // Tambahkan image jika ada
+        if (!empty($imageData)) {
+            $updateData['image'] = $imageData['image'];
+        }
+
+        // Update report
+        $report->update($updateData);
+
+        // Load fresh data with category
+        $report->load('category');
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Laporan berhasil diperbarui',
+            'data' => $report
+        ]);
     }
 
     /**
@@ -90,7 +182,7 @@ class ReportController extends Controller
     }
 
     /**
-     * 🔵 Ubah status laporan (Admin)
+     * 🟤 Ubah status laporan (Admin)
      */
     public function updateStatus(Request $request, Report $report)
     {
