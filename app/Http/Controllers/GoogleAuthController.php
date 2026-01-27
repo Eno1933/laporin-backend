@@ -27,6 +27,14 @@ class GoogleAuthController extends Controller
             // Cari user
             $user = User::where('email', $googleUser->getEmail())->first();
 
+            // Siapkan avatar dengan fallback
+            $avatar = $googleUser->getAvatar();
+            if (empty($avatar)) {
+                // Gunakan UI Avatars jika Google tidak memberikan avatar
+                $encodedName = urlencode($googleUser->getName());
+                $avatar = "https://ui-avatars.com/api/?name={$encodedName}&background=0ea5e9&color=fff&size=200";
+            }
+
             if ($user) {
                 if (!$user->is_active) {
                     return redirect()->away(
@@ -37,7 +45,7 @@ class GoogleAuthController extends Controller
                 if (!$user->google_id) {
                     $user->update([
                         'google_id' => $googleUser->getId(),
-                        'photo'     => $googleUser->getAvatar(),
+                        'photo'     => $avatar,
                     ]);
                 }
             } else {
@@ -46,7 +54,7 @@ class GoogleAuthController extends Controller
                     'email'     => $googleUser->getEmail(),
                     'password'  => Hash::make(uniqid()),
                     'google_id' => $googleUser->getId(),
-                    'photo'     => $googleUser->getAvatar(),
+                    'photo'     => $avatar, // Simpan avatar
                     'is_active' => true,
                     'role'      => 'user', // default
                 ]);
@@ -55,12 +63,13 @@ class GoogleAuthController extends Controller
             // 🔐 Token Sanctum
             $token = $user->createToken('google-login')->plainTextToken;
 
-            // 🌐 Redirect ke frontend (WAJIB ENCODE)
+            // 🌐 Redirect ke frontend dengan photo
             $query = http_build_query([
                 'token'   => $token,
                 'role'    => $user->role,
                 'name'    => $user->name,
                 'user_id' => $user->id,
+                'photo'   => $user->photo, // ← INI YANG PENTING DITAMBAH
             ]);
 
             return redirect()->away(
